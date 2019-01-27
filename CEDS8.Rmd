@@ -1,0 +1,124 @@
+---
+title: "Coursera-PracticalMachineLearning-Week4Proj"
+author: "Rudradip Misra"
+date: "27/01/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement ??? a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+Data
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+Initialization
+## Warning: package 'caret' was built under R version 3.4.4
+## Loading required package: lattice
+## Loading required package: ggplot2
+## Warning: package 'rpart.plot' was built under R version 3.4.4
+## Loading required package: rpart
+## Warning: package 'rpart' was built under R version 3.4.4
+I downloaded and loaded variable training_data and test_data respectively
+
+
+```{r echo=TRUE}
+
+library(e1071)
+
+library(rpart.plot)
+
+
+training_data <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', na.strings = c("NA", "#DIV/0!", ""))
+test_data <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', na.strings = c("NA", "#DIV/0!", ""))
+
+library(caret)
+clnColumnIndex <- colSums(is.na(training_data))/nrow(training_data) < 0.95
+clean_training_data <- training_data[,clnColumnIndex]
+
+```
+
+We then verifying we have removed NA correctly
+
+```{r echo=TRUE}
+
+colSums(is.na(clean_training_data))/nrow(clean_training_data)
+```
+
+
+```{r echo=TRUE}
+colSums(is.na(clean_training_data))
+```
+
+We also remove col1 to col7 because they are not related to the model
+
+## R Markdown
+
+```{r echo=TRUE}
+clean_training_data <- clean_training_data[,-c(1:7)]
+clean_test_data <- test_data[,-c(1:7)]
+```
+
+We then partition the training data into training set and cross validation set
+
+```{r echo=TRUE}
+inTrainIndex <- createDataPartition(clean_training_data$classe, p=0.75)[[1]]
+training_training_data <- clean_training_data[inTrainIndex,]
+training_crossval_data <- clean_training_data[-inTrainIndex,]
+```
+
+
+```{r echo=TRUE}
+allNames <- names(clean_training_data)
+clean_test_data <- test_data[,allNames[1:52]]
+```
+ML Algorithm - Decision Tree
+
+```{r echo=TRUE}
+decisionTreeMod <- train(classe ~., method='rpart', data=training_training_data)
+```
+Predict with decision tree and output the confusion matrix. It seems like the result of the model is not ideal.
+
+```{r echo=TRUE}
+
+decisionTreePrediction <- predict(decisionTreeMod, training_crossval_data)
+
+confusionMatrix(training_crossval_data$classe, decisionTreePrediction)
+```
+
+plotting the decision tree
+
+```{r echo=TRUE}
+rpart.plot(decisionTreeMod$finalModel)
+```
+
+ML Algorithm - Random Forest
+
+```{r echo=TRUE}
+rfMod <- train(classe ~., method='rf', data=training_training_data, ntree=128)
+rfPrediction <- predict(rfMod, training_crossval_data)
+confusionMatrix(training_crossval_data$classe, rfPrediction)
+```
+
+Prediction
+Now we use it to predict the test set
+
+```{r echo=TRUE}
+predict(rfMod, clean_test_data)
+```
+
+Conclusion
+As we can we from the result, the random forest algorithem far outperforms the decision tree in terms of accuracy. We are getting 99.25% in sample accuracy, while the decision tree gives us only nearly 50% in sample accuracy
+
+
+
+
